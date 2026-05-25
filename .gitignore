@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 *.spec
 radi_import_export_nz_sto.py
+to_exe.py
 
 # Ignoriši sistemske fajlove
 .DS_Store
