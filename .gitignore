@@ -1,0 +1,9 @@
+# Ignoriši Python build foldere
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec
+
+# Ignoriši sistemske fajlove
+.DS_Store

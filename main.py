@@ -23,7 +23,7 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=2)
 
         self.left_pane = ctk.CTkScrollableFrame(
-            self, label_text="Tablica", corner_radius=10
+            self, label_text="Kombinaciona Tablica", corner_radius=10
         )
         self.left_pane.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
         self.right_pane = ctk.CTkScrollableFrame(
