@@ -15,9 +15,9 @@ Ako želiš da deluješ kao haker pred kolegama, koristi ovo:
 
 | Taster | Akcija |
 | :--- | :--- |
-| `Strelica Gore/Dole` | Menjaš broj ulaza (N) |
-| `Strelica Desno/Levo` | Menjaš broj izlaza (M) |
-| `Enter` | Generiše novu tabelu (Sve počinje ispočetka) |
+| `Strelica Gore/Dole` | Menjaš broj ulaza |
+| `Strelica Desno/Levo` | Menjaš broj izlaza |
+| `Enter` | Generiše novu tabelu i mape (rifrešuješ trenutnu tabelu/mape) |
 
 ## 🛠 Instalacija (za one koji ne znaju šta je terminal)
 
