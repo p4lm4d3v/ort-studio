@@ -5,7 +5,7 @@ Tebi i tvojoj ekipi sa faksa je muka od crtanja Karnoovih mapa ručno? Ne brinit
 ## 🚀 Šta ovo čudo zapravo radi?
 
 * **Pravljenje tablica:** Nema više gubljenja vremena crtajući.
-* **Karnoove mape:** Automatski ti ih iscrta dok ti pijes kafu.
+* **Karnoove mape:** Automatski ti ih iscrta dok ti pijes kafu (nažalost ne rešava ih).
 * **CSV uvoz/izvoz:** Ako neko od kolega već ima rešene zadatke, samo ih "ukradi" (uvezi) i modifikuj.
 * **Dizajn:** "Dark mode" da ne oslepiš dok učiš u 3 ujutru pred ispit.
 
