@@ -1,7 +1,26 @@
+from enum import Enum
+import hashlib
+import json
+from typing import List
+
 import customtkinter as ctk
 import itertools
 import csv
 from tkinter import filedialog
+
+COLORS: dict = {
+    "LIGHT_GRAY": "#555",
+    "GRAY": "#333333",
+    "DARK_GRAY": "#2b2b2b",
+    "GREEN": "#21b773",
+    "RED": "#a81f1f",
+    "BLUE": "#1f538d",
+    "TRANSPARENT": "transparent",
+    "BLACK": "black",
+    "WHITE": "white",
+}
+
+CORNER_RADIUS = 10
 
 
 class App(ctk.CTk):
@@ -15,6 +34,7 @@ class App(ctk.CTk):
         self.geometry(f"{w}x{h}+{(screen_w-w)//2}+{(screen_h-h)//2}")
 
         self.n, self.m = 3, 2
+        self.id = None
         self.data_store = {}
 
         self.grid_rowconfigure(0, weight=1)
@@ -23,17 +43,23 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=2)
 
         self.left_pane = ctk.CTkScrollableFrame(
-            self, label_text="Kombinaciona Tablica", corner_radius=10
+            self,
+            label_text="Kombinaciona Tablica",
+            corner_radius=CORNER_RADIUS,
+            label_font=("Arial", 14, "bold"),
         )
         self.left_pane.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
         self.right_pane = ctk.CTkScrollableFrame(
-            self, label_text="Karnoove Mape", corner_radius=10
+            self,
+            label_text="Karnoove Mape",
+            corner_radius=CORNER_RADIUS,
+            label_font=("Arial", 14, "bold"),
         )
         self.right_pane.grid(row=0, column=1, sticky="nsew", padx=15, pady=15)
 
         # MODERNIZOVANI TOOLBAR SA VIŠE PROSTORA
         self.toolbar = ctk.CTkFrame(
-            self, height=90, corner_radius=15, fg_color="#2b2b2b"
+            self, height=90, corner_radius=CORNER_RADIUS, fg_color="#2b2b2b"
         )
         self.toolbar.grid(
             row=1, column=0, columnspan=2, sticky="ew", padx=20, pady=(10, 20)
@@ -41,14 +67,15 @@ class App(ctk.CTk):
 
         # Raspored: Levo, Sredina, Desno
         # Dodajemo padding unutar sekcija da elementi 'dišu'
-        self.t_left = ctk.CTkFrame(self.toolbar, fg_color="transparent")
+        self.t_left = ctk.CTkFrame(self.toolbar, fg_color=COLORS["TRANSPARENT"])
         self.t_left.pack(side="left", padx=30)
-        self.t_right = ctk.CTkFrame(self.toolbar, fg_color="transparent")
+        self.t_right = ctk.CTkFrame(self.toolbar, fg_color=COLORS["TRANSPARENT"])
         self.t_right.pack(side="right", padx=30)
 
         # Kontrole levo
         self.create_control("Ulaz", "n", self.t_left)
         self.create_control("Izlaz", "m", self.t_left)
+        # TODO: TO FIX IMPORT self.create_control("ID", "id", self.t_left)
 
         # Generisi sredina (Enter)
         ctk.CTkButton(
@@ -57,31 +84,36 @@ class App(ctk.CTk):
             font=("Arial", 14, "bold"),
             height=40,
             width=100,
-            fg_color="#2ecc71",
-            text_color="black",
-            hover_color="#27ae60",
+            hover_color=COLORS["GREEN"],
+            fg_color=COLORS["LIGHT_GRAY"],
+            text_color=COLORS["WHITE"],
             command=self.run_all,
         ).pack(side="left", padx=5, pady=15)
 
-        # CSV desno
-        ctk.CTkButton(
-            self.t_right,
-            text="Uvezi CSV",
-            font=("Arial", 14),
-            height=40,
-            width=100,
-            fg_color="#444",
-            command=self.import_csv,
-        ).pack(side="left", padx=5, pady=15)
-        ctk.CTkButton(
-            self.t_right,
-            font=("Arial", 14),
-            text="Izvezi CSV",
-            height=40,
-            width=100,
-            fg_color="#444",
-            command=self.export_csv,
-        ).pack(side="left", padx=5, pady=15)
+        # TODO: TO FIX IMPORT
+        # # CSV desno
+        # ctk.CTkButton(
+        #     self.t_right,
+        #     text="Uvezi CSV",
+        #     font=("Arial", 14),
+        #     height=40,
+        #     width=100,
+        #     hover_color=COLORS["GREEN"],
+        #     fg_color=COLORS["LIGHT_GRAY"],
+        #     text_color=COLORS["WHITE"],
+        #     command=self.import_csv,
+        # ).pack(side="left", padx=5, pady=15)
+        # ctk.CTkButton(
+        #     self.t_right,
+        #     font=("Arial", 14),
+        #     text="Izvezi CSV",
+        #     height=40,
+        #     width=100,
+        #     hover_color=COLORS["GREEN"],
+        #     fg_color=COLORS["LIGHT_GRAY"],
+        #     text_color=COLORS["WHITE"],
+        #     command=self.export_csv,
+        # ).pack(side="left", padx=5, pady=15)
 
         # KEYBINDS (Pomeranje + Enter)
         self.bind("<Up>", lambda e: self.update_nm("n", 1))
@@ -92,30 +124,33 @@ class App(ctk.CTk):
         self.create_interface()
 
     def create_control(self, label_text, attr, parent):
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame = ctk.CTkFrame(parent, fg_color=COLORS["TRANSPARENT"])
         frame.pack(side="left", padx=10)
 
         label = ctk.CTkLabel(
             frame,
-            text=f"{label_text} = {str(getattr(self, attr))}",
+            text=f"{label_text}: {str(getattr(self, attr))}",
             font=("Arial", 24, "bold"),
-            text_color="#2ecc71",
+            text_color=COLORS["GREEN"],
             width=30,
         )
         label.pack(side="left", padx=5)
 
         if attr == "n":
             self.n_label = label
-        else:
+        elif attr == "m":
             self.m_label = label
+        # TODO: TO FIX IMPORT
+        # else:
+        #     self.id_label = label
 
     def update_nm(self, attr, delta):
         if attr == "n":
             self.n = max(2, min(4, self.n + delta))
-            self.n_label.configure(text=f"Ulaz = {str(getattr(self, attr))}")
+            self.n_label.configure(text=f"Ulaz: {str(getattr(self, attr))}")
         else:
             self.m = max(1, min(6, self.m + delta))
-            self.m_label.configure(text=f"Izlaz = {str(getattr(self, attr))}")
+            self.m_label.configure(text=f"Izlaz: {str(getattr(self, attr))}")
 
     def run_all(self):
         self.create_interface()
@@ -127,30 +162,39 @@ class App(ctk.CTk):
             self.save_current_data()
         for w in self.left_pane.winfo_children():
             w.destroy()
-        self.table = EditableTruthTable(self.left_pane, self.n, self.m, self.data_store)
+        self.table = EditableTruthTable(
+            self.left_pane, self.n, self.m, self.data_store, self
+        )
         self.table.pack(expand=True, fill="both")
+        self.update_deterministic_id()
 
     def save_current_data(self):
         if hasattr(self, "table") and self.table.buttons:
             inputs_list = list(itertools.product([0, 1], repeat=self.n))
-
-            # Prolazimo kroz sve moguće kombinacije
             for r, inputs in enumerate(inputs_list):
-                # Provera da li red r postoji u tabeli
                 if r < len(self.table.buttons):
                     for c in range(self.m):
-                        # Provera da li kolona c postoji u tom redu
                         if c < len(self.table.buttons[r]):
-                            try:
-                                val = int(self.table.buttons[r][c].cget("text"))
-                                self.data_store[(inputs, c)] = val
-                            except:
-                                continue
+                            text = self.table.buttons[r][c].cget("text")
+                            # Save as 'b' string, or convert to int if '0' or '1'
+                            self.data_store[(inputs, c)] = (
+                                text if text == "b" else int(text)
+                            )
+
+    def update_deterministic_id(self):
+        """Creates a unique 8-character ID based on the current data."""
+        # Convert dictionary keys (tuples) to strings for JSON serialization
+        serializable_data = {str(k): v for k, v in self.data_store.items()}
+        # Create a stable string representation
+        data_str = json.dumps(serializable_data, sort_keys=True)
+        # Create a hash and take the first 8 characters
+        self.id = hashlib.md5(data_str.encode()).hexdigest()[:8]
+        # self.id_label.configure(text=f"ID: {self.id}")
 
     def export_csv(self):
-        print(self.data_store)
-        name = f"{self.n}{self.m}"
-        path = filedialog.asksaveasfilename(initialfile=name,defaultextension=".csv")
+        path = filedialog.asksaveasfilename(
+            initialfile=self.id, defaultextension=".csv"
+        )
         if not path:
             return
         self.save_current_data()
@@ -170,13 +214,12 @@ class App(ctk.CTk):
         if not path:
             return
         with open(path, "r") as f:
-            reader = csv.reader(f)
-            next(reader)
-            self.data_store = {}
-            for row in reader:
+            reader = list(csv.reader(f))
+            # Preskačemo header, pretpostavljamo format: X1, X2, ..., Z1, Z2
+            for row in reader[1:]:
                 inputs = tuple(int(x) for x in row[: self.n])
-                for j, val in enumerate(row[self.n :]):
-                    self.data_store[(inputs, j)] = int(val)
+                for j in range(self.m):
+                    self.data_store[(inputs, j)] = int(row[self.n + j])
         self.run_all()
 
     def render_kmaps(self):
@@ -185,33 +228,36 @@ class App(ctk.CTk):
             w.destroy()
 
         # Grid konfiguracija za desni panel
-        self.right_pane.grid_columnconfigure(0, weight=1)
-        self.right_pane.grid_columnconfigure(1, weight=1)
+        # self.right_pane.grid_columnconfigure(0, weight=1)
+        # self.right_pane.grid_columnconfigure(1, weight=1)
 
         for m_idx in range(self.m):
             data = {k[0]: v for k, v in self.data_store.items() if k[1] == m_idx}
 
-            # Računanje pozicije u gridu (npr. 2 mape u redu)
-            row = m_idx // 2
-            col = m_idx % 2
-
             map_frame = KarnaughMapGrid(self.right_pane, f"Z{m_idx+1}", data, self.n)
-            map_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+            map_frame.grid(
+                row=m_idx // 2, column=m_idx % 2, padx=10, pady=10, sticky="nsew"
+            )
 
 
 class EditableTruthTable(ctk.CTkFrame):
-    def __init__(self, master, n, m, data_store):
+    def __init__(self, master, n, m, data_store, app):
         super().__init__(master, fg_color="transparent")
+        self.n, self.m, self.data_store, self.app = n, m, data_store, app
+
         self.active_menu = None
         container = ctk.CTkFrame(self, fg_color="transparent")
         container.pack(anchor="center", pady=20)
+
         self.buttons = []
         header_row = ctk.CTkFrame(container, fg_color="transparent")
         header_row.pack(pady=(0, 5))
+
         for i in range(n):
             ctk.CTkLabel(
                 header_row, text=f"X{i+1}", font=("Arial", 14, "bold"), width=55
             ).pack(side="left")
+
         for i in range(m):
             ctk.CTkButton(
                 header_row,
@@ -222,6 +268,7 @@ class EditableTruthTable(ctk.CTkFrame):
                 font=("Arial", 14, "bold"),
                 command=lambda idx=i: self.show_menu(idx),
             ).pack(side="left")
+
         for inputs in itertools.product([0, 1], repeat=n):
             row_frame = ctk.CTkFrame(container, fg_color="transparent")
             row_frame.pack(fill="x", pady=2)
@@ -245,10 +292,13 @@ class EditableTruthTable(ctk.CTkFrame):
                     row_frame,
                     width=45,
                     height=45,
-                    text=str(val),
-                    fg_color="#1f538d" if val else "#333333",
+                    text=value_to_show(val),
+                    fg_color=COLORS["GRAY"],
+                    text_color=color_from_value(val),
                 )
-                btn.configure(command=lambda b=btn: self.toggle(b))
+                btn.configure(
+                    command=lambda b=btn, i=inputs, idx=c: self.toggle(b, i, idx)
+                )
                 btn.pack(side="left", padx=5)
                 row_btns.append(btn)
             self.buttons.append(row_btns)
@@ -256,19 +306,57 @@ class EditableTruthTable(ctk.CTkFrame):
     def show_menu(self, col_idx):
         if self.active_menu:
             self.destroy_menu()
+
         menu = ctk.CTkToplevel(self)
         menu.overrideredirect(True)
-        x, y = self.winfo_pointerx(), self.winfo_pointery()
-        menu.geometry(f"100x120+{x}+{y}")
+        menu.attributes("-topmost", True)  # Keeps menu on top
+
+        # 1. Container: Acts as the styled background/backdrop
+        container = ctk.CTkFrame(
+            menu,
+            fg_color=COLORS["DARK_GRAY"],
+            border_width=2,
+            border_color="#444",
+            corner_radius=15,  # Rounded corners for the backdrop
+        )
+        container.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # 2. Add Label to the container
+        ctk.CTkLabel(container, text="Opcije", font=("Arial", 12, "bold")).pack(
+            pady=(10, 5)
+        )
 
         def close_and_run(op):
             self.col_op(col_idx, op)
             self.destroy_menu()
 
-        for txt, val in [("Flip (F)", "flip"), ("Sve 0", 0), ("Sve 1", 1)]:
+        # 3. IMPORTANT: Pack buttons into 'container', not 'menu'
+        for txt, val in [
+            ("Sledeći", "next"),
+            ("Prethodni", "prev"),
+            ("Sve 0", "sve0"),
+            ("Sve 1", "sve1"),
+            ("Sve b", "sveb"),
+        ]:
             ctk.CTkButton(
-                menu, text=txt, width=80, command=lambda v=val: close_and_run(v)
-            ).pack(pady=5)
+                container,  # <--- Changed from 'menu' to 'container'
+                text=txt,
+                width=100,
+                corner_radius=8,
+                command=lambda v=val: close_and_run(v),
+                text_color=COLORS["WHITE"],
+                hover_color=COLORS["GREEN"],
+                fg_color="#444",
+            ).pack(pady=4, padx=15)
+
+        # 4. Force size calculation so the menu wraps the buttons perfectly
+        menu.update_idletasks()
+        w = container.winfo_reqwidth()  # Add small margin
+        h = container.winfo_reqheight()
+
+        x, y = self.winfo_pointerx(), self.winfo_pointery()
+        menu.geometry(f"{w}x{h}+{x}+{y}")
+
         menu.bind("<FocusOut>", lambda e: self.destroy_menu())
         self.active_menu = menu
 
@@ -280,29 +368,95 @@ class EditableTruthTable(ctk.CTkFrame):
     def col_op(self, col_idx, op):
         for row in self.buttons:
             btn = row[col_idx]
-            new_val = 1 - int(btn.cget("text")) if op == "flip" else op
+            val = btn.cget("text")
+            new_val = None
+            if op == "next":
+                new_val = next_value(val)
+            elif op == "prev":
+                new_val = prev_value(val)
+            elif op == "sve0":
+                new_val = 0
+            elif op == "sve1":
+                new_val = 1
+            elif op == "sveb":
+                new_val = -1
             btn.configure(
-                text=str(new_val), fg_color="#1f538d" if new_val else "#333333"
+                text=value_to_show(new_val),
+                fg_color=COLORS["GRAY"],
+                text_color=color_from_value(new_val),
             )
 
-    def toggle(self, btn):
-        new_val = 1 - int(btn.cget("text"))
-        btn.configure(text=str(new_val), fg_color="#1f538d" if new_val else "#333333")
+        self.app.save_current_data()
+        self.app.update_deterministic_id()
+
+    def toggle(self, btn, inputs, col_idx):
+        new_val = next_value(btn.cget("text"))
+        color = color_from_value(new_val)
+        btn.configure(text=value_to_show(new_val), fg_color=COLORS["GRAY"], text_color=color)
+        self.data_store[(inputs, col_idx)] = new_val
+        self.app.update_deterministic_id()
+
+
+def value_to_show(val: int) -> str:
+    if val == 1 or val == 0:
+        return str(val)
+    else:
+        return "b"
+
+
+def next_value(val: str) -> int:
+    if val == "b":
+        val = -1
+    if int(val) == 0:
+        return 1
+    if int(val) == 1:
+        return -1
+    if int(val) == -1:
+        return 0
+    raise ValueError(f"{val}({type(val)}) != 0,1,b")
+
+
+def prev_value(val: str) -> int:
+    if val == "b":
+        val = -1
+    if int(val) == -1:
+        return 1
+    if int(val) == 1:
+        return 0
+    if int(val) == 0:
+        return -1
+    raise ValueError(f"{val}({type(val)}) != 0,1,b")
+
+
+def color_from_value(val: str) -> str:
+    if val == "b":
+        val = -1
+    if int(val) == 0:
+        return COLORS["RED"]
+    elif int(val) == 1:
+        return COLORS["GREEN"]
+    elif int(val) == -1:
+        return COLORS["BLUE"]
+    else:
+        raise ValueError(f"{val}({type(val)}) != 0,1,b")
 
 
 class KarnaughMapGrid(ctk.CTkFrame):
     def __init__(self, master, title, data, n):
         super().__init__(
             master,
-            fg_color="#2b2b2b",
+            fg_color=COLORS["DARK_GRAY"],
             border_width=2,
-            border_color="#555",
-            corner_radius=8,
+            border_color=COLORS["LIGHT_GRAY"],
+            corner_radius=CORNER_RADIUS,
         )
         ctk.CTkLabel(
-            self, text=title.upper(), font=("Arial", 16, "bold"), text_color="#2ecc71"
+            self,
+            text=title.upper(),
+            font=("Arial", 16, "bold"),
+            text_color=COLORS["GREEN"],
         ).pack(pady=10)
-        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner = ctk.CTkFrame(self, fg_color=COLORS["TRANSPARENT"])
         inner.pack(padx=10, pady=10)
         rh = ["0", "1"] if n < 4 else ["00", "01", "11", "10"]
         ch = (
@@ -325,12 +479,12 @@ class KarnaughMapGrid(ctk.CTkFrame):
                     else (int(ch_val), int(rh_val))
                 )
                 val = data.get(bits[-n:], 0)
-                box = ctk.CTkFrame(inner, width=50, height=50, fg_color="#333333")
+                box = ctk.CTkFrame(inner, width=50, height=50, fg_color=COLORS["GRAY"])
                 box.grid(row=r + 1, column=c + 1, padx=5, pady=5)
                 ctk.CTkLabel(
                     box,
                     text=str(val),
-                    text_color="#21b773" if val else "#a81f1f",
+                    text_color=color_from_value(val),
                     font=("Arial", 16, "bold"),
                 ).place(relx=0.5, rely=0.5, anchor="center")
 
