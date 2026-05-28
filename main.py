@@ -26,7 +26,7 @@ CORNER_RADIUS = 10
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("ORT Studio v1")
+        self.title("ORT Studio v1.2")
         ctk.set_appearance_mode("dark")
 
         screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
@@ -241,6 +241,7 @@ class App(ctk.CTk):
 
 
 class EditableTruthTable(ctk.CTkFrame):
+
     def __init__(self, master, n, m, data_store, app):
         super().__init__(master, fg_color="transparent")
         self.n, self.m, self.data_store, self.app = n, m, data_store, app
@@ -253,6 +254,11 @@ class EditableTruthTable(ctk.CTkFrame):
         header_row = ctk.CTkFrame(container, fg_color="transparent")
         header_row.pack(pady=(0, 5))
 
+        # --- 1. Add index header column ---
+        ctk.CTkLabel(
+            header_row, text="i", font=("Arial", 14, "bold"), width=55
+            ).pack(side="left")
+
         for i in range(n):
             ctk.CTkLabel(
                 header_row, text=f"X{i+1}", font=("Arial", 14, "bold"), width=55
@@ -264,7 +270,7 @@ class EditableTruthTable(ctk.CTkFrame):
                 text=f"Z{i+1}",
                 width=50,
                 fg_color="transparent",
-                text_color="#2ecc71",
+                text_color=COLORS["GREEN"],
                 font=("Arial", 14, "bold"),
                 command=lambda idx=i: self.show_menu(idx),
             ).pack(side="left")
@@ -272,19 +278,46 @@ class EditableTruthTable(ctk.CTkFrame):
         for inputs in itertools.product([0, 1], repeat=n):
             row_frame = ctk.CTkFrame(container, fg_color="transparent")
             row_frame.pack(fill="x", pady=2)
+
+            # --- 2. Calculate the decimal value of the inputs ---
+            # Joins the tuple digits (0, 1, 1) -> '011' -> converts base 2 to int
+            decimal_idx = int("".join(map(str, inputs)), 2)
+
+            # --- 3. Render the index box at the start of the row ---
+            idx_box = ctk.CTkFrame(
+                row_frame,
+                width=45,
+                height=45,
+                fg_color=COLORS["GRAY"],  # Slightly different color to distinguish index
+                border_width=1,
+                border_color=COLORS["LIGHT_GRAY"],
+            )
+            idx_box.pack(side="left", padx=5)
+            idx_box.pack_propagate(False)  # Enforce exact dimensions
+            ctk.CTkLabel(
+                idx_box,
+                text=str(decimal_idx),
+                font=("Arial", 12, "italic"),
+                text_color="#888888",
+            ).place(relx=0.5, rely=0.5, anchor="center")
+
+            # X inputs
             for val in inputs:
                 box = ctk.CTkFrame(
                     row_frame,
                     width=45,
                     height=45,
-                    fg_color="#333333",
+                    fg_color=COLORS["GRAY"],
                     border_width=1,
-                    border_color="#555",
+                    border_color=COLORS["LIGHT_GRAY"],
                 )
                 box.pack(side="left", padx=5)
+                box.pack_propagate(False)
                 ctk.CTkLabel(box, text=str(val)).place(
                     relx=0.5, rely=0.5, anchor="center"
                 )
+
+            # Z outputs
             row_btns = []
             for c in range(m):
                 val = data_store.get((inputs, c), 0)
@@ -302,99 +335,6 @@ class EditableTruthTable(ctk.CTkFrame):
                 btn.pack(side="left", padx=5)
                 row_btns.append(btn)
             self.buttons.append(row_btns)
-
-    def show_menu(self, col_idx):
-        if self.active_menu:
-            self.destroy_menu()
-
-        menu = ctk.CTkToplevel(self)
-        menu.overrideredirect(True)
-        menu.attributes("-topmost", True)  # Keeps menu on top
-
-        # 1. Container: Acts as the styled background/backdrop
-        container = ctk.CTkFrame(
-            menu,
-            fg_color=COLORS["DARK_GRAY"],
-            border_width=2,
-            border_color="#444",
-            corner_radius=15,  # Rounded corners for the backdrop
-        )
-        container.pack(fill="both", expand=True, padx=0, pady=0)
-
-        # 2. Add Label to the container
-        ctk.CTkLabel(container, text="Opcije", font=("Arial", 12, "bold")).pack(
-            pady=(10, 5)
-        )
-
-        def close_and_run(op):
-            self.col_op(col_idx, op)
-            self.destroy_menu()
-
-        # 3. IMPORTANT: Pack buttons into 'container', not 'menu'
-        for txt, val in [
-            ("Sledeći", "next"),
-            ("Prethodni", "prev"),
-            ("Sve 0", "sve0"),
-            ("Sve 1", "sve1"),
-            ("Sve b", "sveb"),
-        ]:
-            ctk.CTkButton(
-                container,  # <--- Changed from 'menu' to 'container'
-                text=txt,
-                width=100,
-                corner_radius=8,
-                command=lambda v=val: close_and_run(v),
-                text_color=COLORS["WHITE"],
-                hover_color=COLORS["GREEN"],
-                fg_color="#444",
-            ).pack(pady=4, padx=15)
-
-        # 4. Force size calculation so the menu wraps the buttons perfectly
-        menu.update_idletasks()
-        w = container.winfo_reqwidth()  # Add small margin
-        h = container.winfo_reqheight()
-
-        x, y = self.winfo_pointerx(), self.winfo_pointery()
-        menu.geometry(f"{w}x{h}+{x}+{y}")
-
-        menu.bind("<FocusOut>", lambda e: self.destroy_menu())
-        self.active_menu = menu
-
-    def destroy_menu(self):
-        if self.active_menu:
-            self.active_menu.destroy()
-            self.active_menu = None
-
-    def col_op(self, col_idx, op):
-        for row in self.buttons:
-            btn = row[col_idx]
-            val = btn.cget("text")
-            new_val = None
-            if op == "next":
-                new_val = next_value(val)
-            elif op == "prev":
-                new_val = prev_value(val)
-            elif op == "sve0":
-                new_val = 0
-            elif op == "sve1":
-                new_val = 1
-            elif op == "sveb":
-                new_val = -1
-            btn.configure(
-                text=value_to_show(new_val),
-                fg_color=COLORS["GRAY"],
-                text_color=color_from_value(new_val),
-            )
-
-        self.app.save_current_data()
-        self.app.update_deterministic_id()
-
-    def toggle(self, btn, inputs, col_idx):
-        new_val = next_value(btn.cget("text"))
-        color = color_from_value(new_val)
-        btn.configure(text=value_to_show(new_val), fg_color=COLORS["GRAY"], text_color=color)
-        self.data_store[(inputs, col_idx)] = new_val
-        self.app.update_deterministic_id()
 
 
 def value_to_show(val: int) -> str:
