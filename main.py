@@ -241,7 +241,6 @@ class App(ctk.CTk):
 
 
 class EditableTruthTable(ctk.CTkFrame):
-
     def __init__(self, master, n, m, data_store, app):
         super().__init__(master, fg_color="transparent")
         self.n, self.m, self.data_store, self.app = n, m, data_store, app
@@ -252,54 +251,75 @@ class EditableTruthTable(ctk.CTkFrame):
 
         self.buttons = []
         header_row = ctk.CTkFrame(container, fg_color="transparent")
-        header_row.pack(pady=(0, 5))
+        header_row.pack(pady=(0, 5), padx=(0, 0))
 
-        # --- 1. Add index header column ---
-        ctk.CTkLabel(
-            header_row, text="i", font=("Arial", 14, "bold"), width=55
-            ).pack(side="left")
+        self.row_offset = 0
+        self.index_labels = []
+        self.row_inputs_map = []
+
+        # --- 1. Modified index header column to behave like Z columns ---
+        ctk.CTkButton(
+            header_row,
+            text="i",
+            width=55,
+            fg_color=COLORS["TRANSPARENT"],
+            font=("Arial", 14, "bold"),
+            command=lambda: self.show_menu("index"),  # Passed "index" identifier
+            hover_color=COLORS["GREEN"],
+        ).pack(side="left")
 
         for i in range(n):
             ctk.CTkLabel(
-                header_row, text=f"X{i+1}", font=("Arial", 14, "bold"), width=55
+                header_row,
+                text=f"X{i+1}",
+                font=("Arial", 14, "bold"),
+                width=55,
+                text_color=COLORS["BLUE"],
             ).pack(side="left")
 
         for i in range(m):
             ctk.CTkButton(
                 header_row,
                 text=f"Z{i+1}",
-                width=50,
-                fg_color="transparent",
+                width=55,
+                fg_color=COLORS["TRANSPARENT"],
                 text_color=COLORS["GREEN"],
                 font=("Arial", 14, "bold"),
                 command=lambda idx=i: self.show_menu(idx),
+                hover_color=COLORS["GREEN"],
             ).pack(side="left")
+
+        # Keeping track of row input data map for easy data_store sync
+        self.row_inputs_map = []
 
         for inputs in itertools.product([0, 1], repeat=n):
             row_frame = ctk.CTkFrame(container, fg_color="transparent")
             row_frame.pack(fill="x", pady=2)
+            self.row_inputs_map.append(inputs)
 
             # --- 2. Calculate the decimal value of the inputs ---
-            # Joins the tuple digits (0, 1, 1) -> '011' -> converts base 2 to int
-            decimal_idx = int("".join(map(str, inputs)), 2)
+            decimal_idx = int("".join(map(str, inputs)), 2) + self.row_offset
 
             # --- 3. Render the index box at the start of the row ---
             idx_box = ctk.CTkFrame(
                 row_frame,
                 width=45,
                 height=45,
-                fg_color=COLORS["GRAY"],  # Slightly different color to distinguish index
+                fg_color=COLORS["GRAY"],
                 border_width=1,
                 border_color=COLORS["LIGHT_GRAY"],
             )
             idx_box.pack(side="left", padx=5)
-            idx_box.pack_propagate(False)  # Enforce exact dimensions
-            ctk.CTkLabel(
+            idx_box.pack_propagate(False)
+
+            lbl = ctk.CTkLabel(
                 idx_box,
                 text=str(decimal_idx),
                 font=("Arial", 12, "italic"),
                 text_color="#888888",
-            ).place(relx=0.5, rely=0.5, anchor="center")
+            )
+            lbl.place(relx=0.5, rely=0.5, anchor="center")
+            self.index_labels.append(lbl)
 
             # X inputs
             for val in inputs:
@@ -330,7 +350,9 @@ class EditableTruthTable(ctk.CTkFrame):
                     text_color=color_from_value(val),
                 )
                 btn.configure(
-                    command=lambda b=btn, i=inputs, idx=c: self.toggle(b, i, idx)
+                    command=lambda b=btn, r_idx=len(self.buttons), idx=c: self.toggle(
+                        b, r_idx, idx
+                    )
                 )
                 btn.pack(side="left", padx=5)
                 row_btns.append(btn)
@@ -342,19 +364,16 @@ class EditableTruthTable(ctk.CTkFrame):
 
         menu = ctk.CTkToplevel(self)
         menu.overrideredirect(True)
-        # menu.attributes("-topmost", True)  # Keeps menu on top
 
-        # 1. Container: Acts as the styled background/backdrop
         container = ctk.CTkFrame(
             menu,
             fg_color=COLORS["DARK_GRAY"],
             border_width=2,
             border_color="#444",
-            corner_radius=0,  # Rounded corners for the backdrop
+            corner_radius=0,
         )
-        container.pack(fill="x",expand=True, padx=0, pady=0, ipady=10)
+        container.pack(fill="x", expand=True, padx=0, pady=0, ipady=10)
 
-        # 2. Add Label to the container
         ctk.CTkLabel(container, text="Opcije", font=("Arial", 12, "bold")).pack(
             pady=(10, 5)
         )
@@ -363,33 +382,43 @@ class EditableTruthTable(ctk.CTkFrame):
             self.col_op(col_idx, op)
             self.destroy_menu()
 
-        # 3. IMPORTANT: Pack buttons into 'container', not 'menu'
-        for txt, val in [
-            ("Sledeći", "next"),
-            ("Prethodni", "prev"),
-            ("Sve 0", "sve0"),
-            ("Sve 1", "sve1"),
-            ("Sve b", "sveb"),
-            ("Zatvori", "close")
-        ]:
+        # --- Dynamic Menu Options Generation ---
+        if col_idx == "index":
+            options = [
+                ("Početak: 0", "s0"),
+                ("Početak: 4", "s4"),
+                ("Početak: 8", "s8"),
+                ("Početak: 16", "s16"),
+                ("Zatvori", "close"),
+            ]
+        else:
+            options = [
+                ("Sledeći", "next"),
+                ("Prethodni", "prev"),
+                ("Sve 0", "sve0"),
+                ("Sve 1", "sve1"),
+                ("Sve b", "sveb"),
+                ("Zatvori", "close"),
+            ]
+
+        for txt, val in options:
             ctk.CTkButton(
-                container,  # <--- Changed from 'menu' to 'container'
+                container,
                 text=txt,
-                width=80,
+                width=100,
                 corner_radius=8,
                 command=lambda v=val: close_and_run(v),
                 text_color=COLORS["WHITE"],
                 hover_color=COLORS["GREEN"],
-                fg_color="#444",
+                fg_color=COLORS["LIGHT_GRAY"],
             ).pack(pady=4, padx=15)
 
-        # 4. Force size calculation so the menu wraps the buttons perfectly
         menu.update_idletasks()
-        w = container.winfo_reqwidth()  # Add small margin
-        h = container.winfo_reqheight()
-
         x, y = self.winfo_pointerx(), self.winfo_pointery()
-        menu.geometry(f"{125}x{275}+{x}+{y}")
+
+        # Slightly adapted height layout depending on options count
+        menu_height = 237 if col_idx == "index" else 275
+        menu.geometry(f"125x{menu_height}+{x}+{y}")
 
         menu.bind("<FocusOut>", lambda e: self.destroy_menu())
         self.active_menu = menu
@@ -403,26 +432,39 @@ class EditableTruthTable(ctk.CTkFrame):
         if op == "close":
             return
 
+        if col_idx == "index":
+            if op == "s0":
+                self.row_offset = 0
+            elif op == "s4":
+                self.row_offset = 4
+            elif op == "s8":
+                self.row_offset = 8
+            elif op == "s16":
+                self.row_offset = 16
 
-        for row in self.buttons:
-            btn = row[col_idx]
-            val = btn.cget("text")
-            new_val = None
-            if op == "next":
-                new_val = next_value(val)
-            elif op == "prev":
-                new_val = prev_value(val)
-            elif op == "sve0":
-                new_val = 0
-            elif op == "sve1":
-                new_val = 1
-            elif op == "sveb":
-                new_val = -1
-            btn.configure(
-                text=value_to_show(new_val),
-                fg_color=COLORS["GRAY"],
-                text_color=color_from_value(new_val),
-            )
+            for ridx, lbl in enumerate(self.index_labels):
+                lbl.configure(text=str(ridx + self.row_offset))
+
+        else:
+            for row in self.buttons:
+                btn = row[col_idx]
+                val = btn.cget("text")
+                new_val = None
+                if op == "next":
+                    new_val = next_value(val)
+                elif op == "prev":
+                    new_val = prev_value(val)
+                elif op == "sve0":
+                    new_val = 0
+                elif op == "sve1":
+                    new_val = 1
+                elif op == "sveb":
+                    new_val = -1
+                btn.configure(
+                    text=value_to_show(new_val),
+                    fg_color=COLORS["GRAY"],
+                    text_color=color_from_value(new_val),
+                )
 
         self.app.save_current_data()
         self.app.update_deterministic_id()
@@ -430,7 +472,9 @@ class EditableTruthTable(ctk.CTkFrame):
     def toggle(self, btn, inputs, col_idx):
         new_val = next_value(btn.cget("text"))
         color = color_from_value(new_val)
-        btn.configure(text=value_to_show(new_val), fg_color=COLORS["GRAY"], text_color=color)
+        btn.configure(
+            text=value_to_show(new_val), fg_color=COLORS["GRAY"], text_color=color
+        )
         self.data_store[(inputs, col_idx)] = new_val
         self.app.update_deterministic_id()
 
