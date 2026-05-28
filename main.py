@@ -336,6 +336,104 @@ class EditableTruthTable(ctk.CTkFrame):
                 row_btns.append(btn)
             self.buttons.append(row_btns)
 
+    def show_menu(self, col_idx):
+        if self.active_menu:
+            self.destroy_menu()
+
+        menu = ctk.CTkToplevel(self)
+        menu.overrideredirect(True)
+        # menu.attributes("-topmost", True)  # Keeps menu on top
+
+        # 1. Container: Acts as the styled background/backdrop
+        container = ctk.CTkFrame(
+            menu,
+            fg_color=COLORS["DARK_GRAY"],
+            border_width=2,
+            border_color="#444",
+            corner_radius=0,  # Rounded corners for the backdrop
+        )
+        container.pack(fill="x",expand=True, padx=0, pady=0, ipady=10)
+
+        # 2. Add Label to the container
+        ctk.CTkLabel(container, text="Opcije", font=("Arial", 12, "bold")).pack(
+            pady=(10, 5)
+        )
+
+        def close_and_run(op):
+            self.col_op(col_idx, op)
+            self.destroy_menu()
+
+        # 3. IMPORTANT: Pack buttons into 'container', not 'menu'
+        for txt, val in [
+            ("Sledeći", "next"),
+            ("Prethodni", "prev"),
+            ("Sve 0", "sve0"),
+            ("Sve 1", "sve1"),
+            ("Sve b", "sveb"),
+            ("Zatvori", "close")
+        ]:
+            ctk.CTkButton(
+                container,  # <--- Changed from 'menu' to 'container'
+                text=txt,
+                width=80,
+                corner_radius=8,
+                command=lambda v=val: close_and_run(v),
+                text_color=COLORS["WHITE"],
+                hover_color=COLORS["GREEN"],
+                fg_color="#444",
+            ).pack(pady=4, padx=15)
+
+        # 4. Force size calculation so the menu wraps the buttons perfectly
+        menu.update_idletasks()
+        w = container.winfo_reqwidth()  # Add small margin
+        h = container.winfo_reqheight()
+
+        x, y = self.winfo_pointerx(), self.winfo_pointery()
+        menu.geometry(f"{125}x{275}+{x}+{y}")
+
+        menu.bind("<FocusOut>", lambda e: self.destroy_menu())
+        self.active_menu = menu
+
+    def destroy_menu(self):
+        if self.active_menu:
+            self.active_menu.destroy()
+            self.active_menu = None
+
+    def col_op(self, col_idx, op):
+        if op == "close":
+            return
+
+
+        for row in self.buttons:
+            btn = row[col_idx]
+            val = btn.cget("text")
+            new_val = None
+            if op == "next":
+                new_val = next_value(val)
+            elif op == "prev":
+                new_val = prev_value(val)
+            elif op == "sve0":
+                new_val = 0
+            elif op == "sve1":
+                new_val = 1
+            elif op == "sveb":
+                new_val = -1
+            btn.configure(
+                text=value_to_show(new_val),
+                fg_color=COLORS["GRAY"],
+                text_color=color_from_value(new_val),
+            )
+
+        self.app.save_current_data()
+        self.app.update_deterministic_id()
+
+    def toggle(self, btn, inputs, col_idx):
+        new_val = next_value(btn.cget("text"))
+        color = color_from_value(new_val)
+        btn.configure(text=value_to_show(new_val), fg_color=COLORS["GRAY"], text_color=color)
+        self.data_store[(inputs, col_idx)] = new_val
+        self.app.update_deterministic_id()
+
 
 def value_to_show(val: int) -> str:
     if val == 1 or val == 0:
