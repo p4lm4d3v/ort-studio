@@ -26,7 +26,7 @@ CORNER_RADIUS = 10
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("ORT Studio v1.2")
+        self.title("ORT Studio v1.3")
         ctk.set_appearance_mode("dark")
 
         screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
